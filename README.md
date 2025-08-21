@@ -44,13 +44,13 @@ sudo apt install libpsl-dev
 The following dependencies could not be installed via `apt` and need to be compiled from their source code.
 
 ### 3.1 libssh2
-The minimum libssh2 version needed is 1.11
+The minimum libssh2 version needed is 1.11.2
 
 Acquire, build and install with the following steps:
 ```
-wget https://libssh2.org/download/libssh2-1.11.1.tar.gz
-tar xvf libssh2-1.11.1.tar.gz
-cd libssh2-1.11.1
+wget https://libssh2.org/download/libssh2-1.11.2.tar.gz
+tar xvf libssh2-1.11.2.tar.gz
+cd libssh2-1.11.2
 mkdir build
 cd build/
 ../configure
@@ -64,13 +64,13 @@ sudo ldconfig
 ```
 
 ### 3.2 libcurl
-The minimum curl version (that provides the needed libcurl library) needed is 8.8
+The minimum curl version (that provides the needed libcurl library) needed is 8.15.1
 
 Acquire, build and install with the following steps:
 ```
-wget https://curl.se/download/curl-8.8.0.tar.gz
-tar xvf curl-8.8.0.tar.gz
-cd curl-8.8.0/
+wget https://curl.se/download/curl-8.15.1.tar.gz
+tar xvf curl-8.15.1.tar.gz
+cd curl-8.15.1/
 mkdir build
 cd build/
 ../configure --with-openssl --with-libssh2 --enable-versioned-symbols
@@ -87,9 +87,9 @@ sudo ldconfig
 
 Build instructions are:
 ```
-wget https://github.com/wxWidgets/wxWidgets/releases/download/v3.2.6/wxWidgets-3.2.6.tar.bz2
-tar xvf wxWidgets-3.2.6.tar.bz2
-cd wxWidgets-3.2.6/
+wget https://github.com/wxWidgets/wxWidgets/releases/download/v3.3.1/wxWidgets-3.3.1.tar.bz2
+tar xvf wxWidgets-3.3.1.tar.bz2
+cd wxWidgets-3.3.1/
 mkdir gtk-build
 cd gtk-build/
 ../configure --disable-shared --enable-unicode
