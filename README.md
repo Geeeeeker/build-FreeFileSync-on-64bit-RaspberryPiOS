@@ -64,11 +64,11 @@ sudo ldconfig
 ```
 
 ### 3.2 libcurl
-The minimum curl version (that provides the needed libcurl library) needed is 8.15.1
+The minimum curl version (that provides the needed libcurl library) needed is 8.15.0
 
 Acquire, build and install with the following steps:
 ```
-wget https://curl.se/download/curl-8.15.1.tar.gz
+wget https://curl.se/download/curl-8.15.10.tar.gz
 tar xvf curl-8.15.1.tar.gz
 cd curl-8.15.1/
 mkdir build
@@ -92,7 +92,7 @@ tar xvf wxWidgets-3.3.1.tar.bz2
 cd wxWidgets-3.3.1/
 mkdir gtk-build
 cd gtk-build/
-../configure --disable-shared --enable-unicode
+../configure --disable-shared
 make
 sudo make install
 ```
