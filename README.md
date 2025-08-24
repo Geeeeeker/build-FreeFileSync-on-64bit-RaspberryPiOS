@@ -12,17 +12,17 @@ These instructions are applicable to the following versions:
 
 Item  | Release/Version
 ------------ | -------------
-64 Bit Raspberry Pi OS (Raspbian) | Linux raspberrypi 6.6.62+rpt-rpi-v8 + #1 SMP PREEMPT Debian 1:6.6.62-1+rtp1 (2024-11-25) aarch64 GNU/Linux (from ```uname -a```)
-FreeFileSync | ```v13.9```
+64 Bit Raspberry Pi OS (Raspbian) | (from ```uname -a```) Linux raspberrypi 6.6.62+rpt-rpi-v8 + #1 SMP PREEMPT Debian 1:6.6.62-1+rtp1 (2024-11-25) aarch64 GNU/Linux 
+FreeFileSync | ```v14.4```
 
 ## 1. Download and extract the FreeFilesSync source code
 
 As of this writing, the latest version of FreeFileSync is 13.9 and it can be downloaded from: 
 
-https://freefilesync.org/download/FreeFileSync_13.9_Source.zip
+https://freefilesync.org/download/FreeFileSync_14.4_Source.zip
 
 Move the .zip file to the desired directory and uncompress
-```unzip FreeFileSync_13.9_Source.zip```
+```unzip FreeFileSync_14.4_Source.zip```
 
 ## 2. Install available dependencies via apt
 These instructions reflect building FreeFileSync using libgtk-3 but using libgtk-3 may lead to a non-optimal user experience- see:
