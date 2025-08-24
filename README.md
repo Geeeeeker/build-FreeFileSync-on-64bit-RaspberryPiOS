@@ -32,11 +32,15 @@ The following dependencies need to be installed to compile:
 - libgtk-3-dev (will pull in many, many other dependencies)
 - libssl-dev
 - libpsl-dev
+- libidn2-dev (new-ish!)
+
 ```
 sudo apt update
 sudo apt install libgtk-3-dev 
 sudo apt install libssl-dev
 sudo apt install libpsl-dev
+sudo apt install libidn2-dev
+
 ```
 
 ## 3. Compile dependencies not available via apt
@@ -115,20 +119,20 @@ Add these constant definitions starting at line 21
 ### 4.2 Update FreeFileSync/Source/Makefile to use GTK3 instead of GTK2 
 While previously mentioned, use of GTK3 can result in poor UI experience (see thread at: https://freefilesync.org/forum/viewtopic.php?t=7660) the various dependencies for GTK2 building became too arduous for me on Raspbery Pi OS and so, picking my poison, I switched to GTK3 by doing the following:
 
-On line 20:
+On line 23:
 ```
 change: cxxFlags  += `pkg-config --cflags gtk+-2.0`
 to:     cxxFlags  += `pkg-config --cflags gtk+-3.0`
 ```
 
-On line 22:
+On line 25:
 ```
 change: cxxFlags  += -isystem/usr/include/gtk-2.0
 to:     cxxFlags  += -isystem/usr/include/gtk-3.0
 ```
 ### 4.3 Update FreeFileSync/Source/application.cpp to change wxWidget exception check from #error to only a #warning
 
-On line 247:
+On line 243:
 ```
 change: #error why is wxWidgets uncaught exception handling enabled!?
 to:     #warning why is wxWidgets uncaught exception handling enabled!?
