@@ -2,7 +2,7 @@
 FreeFileSync is a great open source file synchronization tool.
 Building from source is straightfoward *if* all the necessary dependencies are installed.
 These instruction capture the necessary steps for installing the various dependencies and compiling FreeFileSync on 64-bit Raspberry Pi OS.
-This specific set of instructions was cloned from [subere](https://github.com/Subere/build-FreeFileSync-on-raspberry-pi), itself a fork-of-a-fork (of a fork) that originated with [jeffli](https://github.com/jeffli678/build-FreeFileSync)
+This specific set of instructions started with a cloned from [subere](https://github.com/Subere/build-FreeFileSync-on-raspberry-pi), itself a fork-of-a-fork (of a fork) that originated with [jeffli](https://github.com/jeffli678/build-FreeFileSync)
 
 ## Sources of information
 These instructions try to reference discussions on the FreeFileSync forums where applicable and the [debian patches](https://sources.debian.org/patches/freefilesync/) associated with the unofficial FreeFileSync Debian build.
@@ -48,20 +48,20 @@ sudo apt install libidn2-dev
 The following dependencies could not be installed via `apt` and need to be compiled from their source code.
 
 ### 3.1 libssh2
-The minimum libssh2 version needed is 1.11.2
+The minimum libssh2 version needed is 1.11.1
 
 Acquire, build and install with the following steps:
 ```
-wget https://libssh2.org/download/libssh2-1.11.2.tar.gz
-tar xvf libssh2-1.11.2.tar.gz
-cd libssh2-1.11.2
+wget https://libssh2.org/download/libssh2-1.11.1.tar.gz
+tar xvf libssh2-1.11.1.tar.gz
+cd libssh2-1.11.1
 mkdir build
 cd build/
 ../configure
 make
 sudo make install
 ```
-Perform additional step to move the newly created library and overwrite the existing version used by 64-bit RaspberryPi OS.
+Perform additional step to move the newly created library where 64-bit RaspberryPi OS expects it to be.
 ```
 sudo cp /usr/local/lib/libssh2.so.1.0.1 /usr/lib/aarch64-linux-gnu/
 sudo ldconfig
@@ -72,9 +72,9 @@ The minimum curl version (that provides the needed libcurl library) needed is 8.
 
 Acquire, build and install with the following steps:
 ```
-wget https://curl.se/download/curl-8.15.10.tar.gz
-tar xvf curl-8.15.1.tar.gz
-cd curl-8.15.1/
+wget https://curl.se/download/curl-8.15.0.tar.gz
+tar xvf curl-8.15.0.tar.gz
+cd curl-8.15.0/
 mkdir build
 cd build/
 ../configure --with-openssl --with-libssh2 --enable-versioned-symbols
@@ -102,7 +102,7 @@ sudo make install
 ```
 The need to disable WxWidget exception handling (using the '--enable-no_exceptions' options) was mentioned with the introduction of FFSv13.2 in the forums at:
 https://freefilesync.org/forum/viewtopic.php?t=10794
-It appears that the use of "--enable-no_exceptions" generates other compilation errors and so FileSync code could be modified to remove the check or to throw a warning instead of an error.
+It appears that the use of "--enable-no_exceptions" generates other compilation errors and so FileSync code could be modified to remove the check or to throw a warning instead of an error (See Section 4.3 below)
 
 ## 4. Tweak FreeFileSync code
 
