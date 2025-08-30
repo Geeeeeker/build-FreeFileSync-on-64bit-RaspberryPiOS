@@ -17,7 +17,7 @@ FreeFileSync | ```v14.4```
 
 ## 1. Download and extract the FreeFilesSync source code
 
-As of this writing, the latest version of FreeFileSync is 13.9 and it can be downloaded from: 
+As of this writing, the latest version of FreeFileSync is 14.4 and it can be downloaded from: 
 
 https://freefilesync.org/download/FreeFileSync_14.4_Source.zip
 
@@ -140,30 +140,54 @@ to:     #warning why is wxWidgets uncaught exception handling enabled!?
 
 This will allow compilation and execution - but any logfiles collected for troubleshooting may not be useful.
 
-### 4.4 Add workaround for libglibc weirndess in FreeFileSync/Source/base/icon_loader.cpp
-
-Deep within the libglibc library, a macro is rewritting the line inappropriately resulting in a failed compilation.
-The libglibc fix will eventually be available but until then, this workaround is needed.
-
-#### References
-* FreeFileSync Forum: https://freefilesync.org/forum/viewtopic.php?t=8780
-* Debian patch: https://sources.debian.org/patches/freefilesync/12.0-2/ffs_icon_loader.patch/
-
-Replace this line (line 230)
+### 4.4 Make darkmode-related change in wx+/darkmode.cpp
+Line 63, 
 ```
-    ::g_object_ref(gicon);                   //pass ownership
+change: globalDefaultThemeIsDark = wxSystemSettings::GetAppearance().AreAppsDark();
+to:     globalDefaultThemeIsDark = false;
 ```
 
-With the following set of lines:
+Line 96,
 ```
-#if (GLIB_CHECK_VERSION (2, 67, 0))
-    g_object_ref(gicon);                   //pass ownership
-#else
-    ::g_object_ref(gicon);                 //pass ownership
-#endif
+remove:         if (wxApp::AppearanceResult rv = wxTheApp->SetAppearance(colTheme);
+remove:             rv != wxApp::AppearanceResult::Ok)
+remove:             throw SysError(formatSystemError("wxApp::SetAppearance",
+remove:                                              rv == wxApp::AppearanceResult::CannotChange ? L"CannotChange" : L"Failure", L"" /*errorMsg*/));
+```
+### 4.5 Make darkmode-related change in wx+/darkmode.h
+Line 12
+```
+add: #include <wx/settings.h>
+```
+Add the following starting at line 29:
+
+```
+struct wxColorHook
+{
+    virtual ~wxColorHook() {}
+    virtual wxColour getColor(wxSystemColour index) const = 0;
+};
+WXDLLIMPEXP_CORE inline std::unique_ptr<wxColorHook>& refGlobalColorHook()
+{
+    static std::unique_ptr<wxColorHook> globalColorHook;
+    return globalColorHook;
+}
+   
+     
+class WXDLLIMPEXP_CORE wxSystemSettings2 : public wxSystemSettingsNative
+{
+public:
+    static wxColour GetColour(wxSystemColour index)
+    {
+       if (refGlobalColorHook())
+                        return refGlobalColorHook()->getColor(index);
+     
+       return wxSystemSettingsNative::GetColour(index);
+    }
+};
 ```
 
-### 4.4 [Optional] Populate Google client_id and client_key in Freefilesync/Source/afs/gdrive.cpp
+### 4.6 [Optional] Populate Google client_id and client_key in Freefilesync/Source/afs/gdrive.cpp
 Information about Google Drive support on self-compiled instances was mentioned at https://freefilesync.org/forum/viewtopic.php?t=8171
 
 To set up and use a google cloud location for syncing, your compiled version of Free File Sync needs to be registered with Google (you can't reuse the registration credentials of the official FreeFileSync release for a number of reasons perhaps most fundamentally, you could modify the code in any shape/way/form and no longer use it as the original author intended)
