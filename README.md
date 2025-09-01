@@ -5,7 +5,7 @@ These instruction capture the necessary steps for installing the various depende
 This specific set of instructions started with a cloned from [subere](https://github.com/Subere/build-FreeFileSync-on-raspberry-pi), itself a fork-of-a-fork (of a fork) that originated with [jeffli](https://github.com/jeffli678/build-FreeFileSync)
 
 ## Sources of information
-These instructions try to reference discussions on the FreeFileSync forums where applicable and the [debian patches](https://sources.debian.org/patches/freefilesync/) associated with the unofficial FreeFileSync Debian build.
+These instructions try to reference discussions on the FreeFileSync forums where applicable, the [debian patches](https://sources.debian.org/patches/freefilesync/) associated with the unofficial FreeFileSync Debian build and arch linux's [aur build](https://aur.archlinux.org/packages/freefilesync).
 If you frequent the FreeFileSync forms, you might see some familiar names mentioned in the debian patches (shoutout to bgstack15!) 
 
 These instructions are applicable to the following versions:
@@ -32,7 +32,7 @@ The following dependencies need to be installed to compile:
 - libgtk-3-dev (will pull in many, many other dependencies)
 - libssl-dev
 - libpsl-dev
-- libidn2-dev (new-ish!)
+- libidn2-dev (_new-ish!_)
 
 ```
 sudo apt update
@@ -131,7 +131,6 @@ change: cxxFlags  += -isystem/usr/include/gtk-2.0
 to:     cxxFlags  += -isystem/usr/include/gtk-3.0
 ```
 ### 4.3 Update FreeFileSync/Source/application.cpp to change wxWidget exception check from #error to only a #warning
-
 On line 243:
 ```
 change: #error why is wxWidgets uncaught exception handling enabled!?
@@ -141,13 +140,15 @@ to:     #warning why is wxWidgets uncaught exception handling enabled!?
 This will allow compilation and execution - but any logfiles collected for troubleshooting may not be useful.
 
 ### 4.4 Make darkmode-related change in wx+/darkmode.cpp
+These changes are referenced in the Bugs.txt file, using information from the arch aur patch on how to incorporate them.
+
 Line 63, 
 ```
 change: globalDefaultThemeIsDark = wxSystemSettings::GetAppearance().AreAppsDark();
 to:     globalDefaultThemeIsDark = false;
 ```
 
-Line 96,
+Starting on Line 96,
 ```
 remove:         if (wxApp::AppearanceResult rv = wxTheApp->SetAppearance(colTheme);
 remove:             rv != wxApp::AppearanceResult::Ok)
@@ -155,6 +156,8 @@ remove:             throw SysError(formatSystemError("wxApp::SetAppearance",
 remove:                                              rv == wxApp::AppearanceResult::CannotChange ? L"CannotChange" : L"Failure", L"" /*errorMsg*/));
 ```
 ### 4.5 Make darkmode-related change in wx+/darkmode.h
+These changes are referenced in the Bugs.txt file, using information from the arch aur patch on how to incorporate them.
+
 Line 12
 ```
 add: #include <wx/settings.h>
@@ -211,6 +214,9 @@ Go to the FreeFileSync/Build/Bin directory and run by entering:
 ```
 
 # Troubleshooting & Known Issues
+
+## At least with the 14.4 and the changes above, theme matches system mode, no arbitrary switching
+While the FreeFileSync GUI options has a place to arbitrarily switch the app's theme between Light and Dark, right now with the changes above, the FreeFileSync app matches the system mode (light or dark) and the option to change has no effect.
 
 ##  Image used in 'About' diaglog is missing generating an error dialog window
 When opening the 'About' dialog, a reference image file is missing. The lack of image generates an error but doesn't seem to have any other impact.
