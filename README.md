@@ -2,27 +2,27 @@
 FreeFileSync is a great open source file synchronization tool.
 Building from source is straightfoward *if* all the necessary dependencies are installed.
 These instruction capture the necessary steps for installing the various dependencies and compiling FreeFileSync on 64-bit Raspberry Pi OS.
-This specific set of instructions was cloned from [subere](https://github.com/Subere/build-FreeFileSync-on-raspberry-pi), itself a fork-of-a-fork (of a fork) that originated with [jeffli](https://github.com/jeffli678/build-FreeFileSync)
+This specific set of instructions started with a cloned from [subere](https://github.com/Subere/build-FreeFileSync-on-raspberry-pi), itself a fork-of-a-fork (of a fork) that originated with [jeffli](https://github.com/jeffli678/build-FreeFileSync)
 
 ## Sources of information
-These instructions try to reference discussions on the FreeFileSync forums where applicable and the [debian patches](https://sources.debian.org/patches/freefilesync/) associated with the unofficial FreeFileSync Debian build.
+These instructions try to reference discussions on the FreeFileSync forums where applicable, the [debian patches](https://sources.debian.org/patches/freefilesync/) associated with the unofficial FreeFileSync Debian build and arch linux's [aur build](https://aur.archlinux.org/packages/freefilesync).
 If you frequent the FreeFileSync forms, you might see some familiar names mentioned in the debian patches (shoutout to bgstack15!) 
 
 These instructions are applicable to the following versions:
 
 Item  | Release/Version
 ------------ | -------------
-64 Bit Raspberry Pi OS (Raspbian) | Linux raspberrypi 6.6.62+rpt-rpi-v8 + #1 SMP PREEMPT Debian 1:6.6.62-1+rtp1 (2024-11-25) aarch64 GNU/Linux (from ```uname -a```)
-FreeFileSync | ```v13.9```
+64 Bit Raspberry Pi OS (Raspbian) | (from ```uname -a```) Linux raspberrypi 6.6.62+rpt-rpi-v8 + #1 SMP PREEMPT Debian 1:6.6.62-1+rtp1 (2024-11-25) aarch64 GNU/Linux 
+FreeFileSync | ```v14.4```
 
 ## 1. Download and extract the FreeFilesSync source code
 
-As of this writing, the latest version of FreeFileSync is 13.9 and it can be downloaded from: 
+As of this writing, the latest version of FreeFileSync is 14.4 and it can be downloaded from: 
 
-https://freefilesync.org/download/FreeFileSync_13.9_Source.zip
+https://freefilesync.org/download/FreeFileSync_14.4_Source.zip
 
 Move the .zip file to the desired directory and uncompress
-```unzip FreeFileSync_13.9_Source.zip```
+```unzip FreeFileSync_14.4_Source.zip```
 
 ## 2. Install available dependencies via apt
 These instructions reflect building FreeFileSync using libgtk-3 but using libgtk-3 may lead to a non-optimal user experience- see:
@@ -32,11 +32,15 @@ The following dependencies need to be installed to compile:
 - libgtk-3-dev (will pull in many, many other dependencies)
 - libssl-dev
 - libpsl-dev
+- libidn2-dev (_new-ish!_)
+
 ```
 sudo apt update
 sudo apt install libgtk-3-dev 
 sudo apt install libssl-dev
 sudo apt install libpsl-dev
+sudo apt install libidn2-dev
+
 ```
 
 ## 3. Compile dependencies not available via apt
@@ -44,7 +48,7 @@ sudo apt install libpsl-dev
 The following dependencies could not be installed via `apt` and need to be compiled from their source code.
 
 ### 3.1 libssh2
-The minimum libssh2 version needed is 1.11
+The minimum libssh2 version needed is 1.11.1
 
 Acquire, build and install with the following steps:
 ```
@@ -57,20 +61,20 @@ cd build/
 make
 sudo make install
 ```
-Perform additional step to move the newly created library and overwrite the existing version used by 64-bit RaspberryPi OS.
+Perform additional step to move the newly created library where 64-bit RaspberryPi OS expects it to be.
 ```
 sudo cp /usr/local/lib/libssh2.so.1.0.1 /usr/lib/aarch64-linux-gnu/
 sudo ldconfig
 ```
 
 ### 3.2 libcurl
-The minimum curl version (that provides the needed libcurl library) needed is 8.8
+The minimum curl version (that provides the needed libcurl library) needed is 8.15.0
 
 Acquire, build and install with the following steps:
 ```
-wget https://curl.se/download/curl-8.8.0.tar.gz
-tar xvf curl-8.8.0.tar.gz
-cd curl-8.8.0/
+wget https://curl.se/download/curl-8.15.0.tar.gz
+tar xvf curl-8.15.0.tar.gz
+cd curl-8.15.0/
 mkdir build
 cd build/
 ../configure --with-openssl --with-libssh2 --enable-versioned-symbols
@@ -87,18 +91,18 @@ sudo ldconfig
 
 Build instructions are:
 ```
-wget https://github.com/wxWidgets/wxWidgets/releases/download/v3.2.6/wxWidgets-3.2.6.tar.bz2
-tar xvf wxWidgets-3.2.6.tar.bz2
-cd wxWidgets-3.2.6/
+wget https://github.com/wxWidgets/wxWidgets/releases/download/v3.3.1/wxWidgets-3.3.1.tar.bz2
+tar xvf wxWidgets-3.3.1.tar.bz2
+cd wxWidgets-3.3.1/
 mkdir gtk-build
 cd gtk-build/
-../configure --disable-shared --enable-unicode
+../configure --disable-shared
 make
 sudo make install
 ```
 The need to disable WxWidget exception handling (using the '--enable-no_exceptions' options) was mentioned with the introduction of FFSv13.2 in the forums at:
 https://freefilesync.org/forum/viewtopic.php?t=10794
-It appears that the use of "--enable-no_exceptions" generates other compilation errors and so FileSync code could be modified to remove the check or to throw a warning instead of an error.
+It appears that the use of "--enable-no_exceptions" generates other compilation errors and so FileSync code could be modified to remove the check or to throw a warning instead of an error (See Section 4.3 below)
 
 ## 4. Tweak FreeFileSync code
 
@@ -115,20 +119,19 @@ Add these constant definitions starting at line 21
 ### 4.2 Update FreeFileSync/Source/Makefile to use GTK3 instead of GTK2 
 While previously mentioned, use of GTK3 can result in poor UI experience (see thread at: https://freefilesync.org/forum/viewtopic.php?t=7660) the various dependencies for GTK2 building became too arduous for me on Raspbery Pi OS and so, picking my poison, I switched to GTK3 by doing the following:
 
-On line 20:
+On line 23:
 ```
 change: cxxFlags  += `pkg-config --cflags gtk+-2.0`
 to:     cxxFlags  += `pkg-config --cflags gtk+-3.0`
 ```
 
-On line 22:
+On line 25:
 ```
 change: cxxFlags  += -isystem/usr/include/gtk-2.0
 to:     cxxFlags  += -isystem/usr/include/gtk-3.0
 ```
 ### 4.3 Update FreeFileSync/Source/application.cpp to change wxWidget exception check from #error to only a #warning
-
-On line 247:
+On line 243:
 ```
 change: #error why is wxWidgets uncaught exception handling enabled!?
 to:     #warning why is wxWidgets uncaught exception handling enabled!?
@@ -136,30 +139,58 @@ to:     #warning why is wxWidgets uncaught exception handling enabled!?
 
 This will allow compilation and execution - but any logfiles collected for troubleshooting may not be useful.
 
-### 4.4 Add workaround for libglibc weirndess in FreeFileSync/Source/base/icon_loader.cpp
+### 4.4 Make darkmode-related change in wx+/darkmode.cpp
+These changes are referenced in the Bugs.txt file, using information from the arch aur patch on how to incorporate them.
 
-Deep within the libglibc library, a macro is rewritting the line inappropriately resulting in a failed compilation.
-The libglibc fix will eventually be available but until then, this workaround is needed.
-
-#### References
-* FreeFileSync Forum: https://freefilesync.org/forum/viewtopic.php?t=8780
-* Debian patch: https://sources.debian.org/patches/freefilesync/12.0-2/ffs_icon_loader.patch/
-
-Replace this line (line 230)
+Line 63, 
 ```
-    ::g_object_ref(gicon);                   //pass ownership
+change: globalDefaultThemeIsDark = wxSystemSettings::GetAppearance().AreAppsDark();
+to:     globalDefaultThemeIsDark = false;
 ```
 
-With the following set of lines:
+Starting on Line 96,
 ```
-#if (GLIB_CHECK_VERSION (2, 67, 0))
-    g_object_ref(gicon);                   //pass ownership
-#else
-    ::g_object_ref(gicon);                 //pass ownership
-#endif
+remove:         if (wxApp::AppearanceResult rv = wxTheApp->SetAppearance(colTheme);
+remove:             rv != wxApp::AppearanceResult::Ok)
+remove:             throw SysError(formatSystemError("wxApp::SetAppearance",
+remove:                                              rv == wxApp::AppearanceResult::CannotChange ? L"CannotChange" : L"Failure", L"" /*errorMsg*/));
+```
+### 4.5 Make darkmode-related change in wx+/darkmode.h
+These changes are referenced in the Bugs.txt file, using information from the arch aur patch on how to incorporate them.
+
+Line 12
+```
+add: #include <wx/settings.h>
+```
+Add the following starting at line 29:
+
+```
+struct wxColorHook
+{
+    virtual ~wxColorHook() {}
+    virtual wxColour getColor(wxSystemColour index) const = 0;
+};
+WXDLLIMPEXP_CORE inline std::unique_ptr<wxColorHook>& refGlobalColorHook()
+{
+    static std::unique_ptr<wxColorHook> globalColorHook;
+    return globalColorHook;
+}
+   
+     
+class WXDLLIMPEXP_CORE wxSystemSettings2 : public wxSystemSettingsNative
+{
+public:
+    static wxColour GetColour(wxSystemColour index)
+    {
+       if (refGlobalColorHook())
+                        return refGlobalColorHook()->getColor(index);
+     
+       return wxSystemSettingsNative::GetColour(index);
+    }
+};
 ```
 
-### 4.4 [Optional] Populate Google client_id and client_key in Freefilesync/Source/afs/gdrive.cpp
+### 4.6 [Optional] Populate Google client_id and client_key in Freefilesync/Source/afs/gdrive.cpp
 Information about Google Drive support on self-compiled instances was mentioned at https://freefilesync.org/forum/viewtopic.php?t=8171
 
 To set up and use a google cloud location for syncing, your compiled version of Free File Sync needs to be registered with Google (you can't reuse the registration credentials of the official FreeFileSync release for a number of reasons perhaps most fundamentally, you could modify the code in any shape/way/form and no longer use it as the original author intended)
@@ -183,6 +214,9 @@ Go to the FreeFileSync/Build/Bin directory and run by entering:
 ```
 
 # Troubleshooting & Known Issues
+
+## At least with the 14.4 and the changes above, theme matches system mode, no arbitrary switching
+While the FreeFileSync GUI options has a place to arbitrarily switch the app's theme between Light and Dark, right now with the changes above, the FreeFileSync app matches the system mode (light or dark) and the option to change has no effect.
 
 ##  Image used in 'About' diaglog is missing generating an error dialog window
 When opening the 'About' dialog, a reference image file is missing. The lack of image generates an error but doesn't seem to have any other impact.
