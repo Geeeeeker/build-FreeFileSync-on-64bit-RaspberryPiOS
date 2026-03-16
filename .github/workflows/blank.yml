@@ -36,6 +36,30 @@ jobs:
           esac
           echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
 
+      # ---------- 下载源码包（带缓存） ----------
+      - name: Cache source archives
+        id: cache-sources
+        uses: actions/cache@v4
+        with:
+          path: |
+            ./downloaded-sources
+          key: ${{ runner.os }}-sources-v1
+
+      - name: Download source archives (if not cached)
+        if: steps.cache-sources.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p downloaded-sources
+          cd downloaded-sources
+          # libssh2
+          curl -L -O --retry 5 --retry-delay 5 https://libssh2.org/download/libssh2-1.11.1.tar.gz
+          # curl
+          curl -L -O --retry 5 --retry-delay 5 https://curl.se/download/curl-8.15.0.tar.gz
+          # wxWidgets
+          curl -L -O --retry 5 --retry-delay 5 https://github.com/wxWidgets/wxWidgets/releases/download/v3.3.1/wxWidgets-3.3.1.tar.bz2
+          # FreeFileSync
+          curl -L -O --retry 5 --retry-delay 5 https://freefilesync.org/download/FreeFileSync_14.4_Source.zip
+
+      # ---------- 构建容器 ----------
       - name: Build in container
         run: |
           docker run --rm \
@@ -47,8 +71,9 @@ jobs:
             set -e
             apt update && apt install -y wget unzip make g++ pkg-config libgtk-3-dev libssl-dev libpsl-dev libidn2-dev patch
 
-            # 下载并编译 libssh2
-            wget https://libssh2.org/download/libssh2-1.11.1.tar.gz
+            cd /workspace/downloaded-sources
+
+            # 编译 libssh2
             tar xzf libssh2-1.11.1.tar.gz
             cd libssh2-1.11.1
             mkdir build && cd build
@@ -60,8 +85,7 @@ jobs:
             ldconfig
             cd ../..
 
-            # 下载并编译 libcurl
-            wget https://curl.se/download/curl-8.15.0.tar.gz
+            # 编译 libcurl
             tar xzf curl-8.15.0.tar.gz
             cd curl-8.15.0
             mkdir build && cd build
@@ -72,8 +96,7 @@ jobs:
             ldconfig
             cd ../..
 
-            # 下载并编译 wxWidgets
-            wget https://github.com/wxWidgets/wxWidgets/releases/download/v3.3.1/wxWidgets-3.3.1.tar.bz2
+            # 编译 wxWidgets
             tar xjf wxWidgets-3.3.1.tar.bz2
             cd wxWidgets-3.3.1
             mkdir gtk-build && cd gtk-build
@@ -82,12 +105,10 @@ jobs:
             make install
             cd ../..
 
-            # 下载 FreeFileSync 源码
-            wget https://freefilesync.org/download/FreeFileSync_14.4_Source.zip
-            unzip FreeFileSync_14.4_Source.zip
+            # 解压 FreeFileSync 源码
+            unzip -q FreeFileSync_14.4_Source.zip -d /workspace/FreeFileSync
 
-            # 应用代码修改
-            cd FreeFileSync/Source
+            cd /workspace/FreeFileSync/Source
 
             # 4.1 sftp.cpp
             sed -i '21i#define MAX_SFTP_OUTGOING_SIZE 30000\n#define MAX_SFTP_READ_SIZE 30000' afs/sftp.cpp
@@ -104,9 +125,7 @@ jobs:
             sed -i '96,99d' ../wx+/darkmode.cpp
 
             # 4.5 darkmode.h
-            # 添加头文件包含
             sed -i '12i#include <wx/settings.h>' ../wx+/darkmode.h
-            # 在29行后插入新内容（使用 heredoc 配合 sed）
             sed -i '29r /dev/stdin' ../wx+/darkmode.h << 'EOF'
             struct wxColorHook
             {
@@ -132,13 +151,10 @@ jobs:
             };
             EOF
 
-            # 4.6 gdrive.cpp (可选，留空)
-            # 如果需要，可在此填入自己的 client_id / secret
-
             # 编译
             make -j\$(nproc)
 
-            # 重命名二进制文件
+            # 重命名二进制
             cd ../../Build/Bin
             BIN_NAME=\"FreeFileSync_\${{ github.event.inputs.arch }}\"
             if [ -f FreeFileSync_aarch64 ]; then
