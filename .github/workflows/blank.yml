@@ -1,0 +1,162 @@
+name: Build FreeFileSync
+
+on:
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: 'Target architecture'
+        required: true
+        default: 'amd64'
+        type: choice
+        options:
+          - amd64
+          - arm64
+          - arm
+          - i386
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set platform variable
+        id: platform
+        run: |
+          case "${{ github.event.inputs.arch }}" in
+            amd64) PLATFORM=linux/amd64 ;;
+            arm64) PLATFORM=linux/arm64 ;;
+            arm)   PLATFORM=linux/arm/v7 ;;
+            i386)  PLATFORM=linux/386 ;;
+            *)     echo "Unknown architecture" && exit 1 ;;
+          esac
+          echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
+
+      - name: Build in container
+        run: |
+          docker run --rm \
+            --platform ${{ steps.platform.outputs.platform }} \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            ubuntu:24.04 \
+            bash -c "
+            set -e
+            apt update && apt install -y wget unzip make g++ pkg-config libgtk-3-dev libssl-dev libpsl-dev libidn2-dev patch
+
+            # 下载并编译 libssh2
+            wget https://libssh2.org/download/libssh2-1.11.1.tar.gz
+            tar xzf libssh2-1.11.1.tar.gz
+            cd libssh2-1.11.1
+            mkdir build && cd build
+            ../configure
+            make -j\$(nproc)
+            make install
+            # 复制库（按文档步骤）
+            cp /usr/local/lib/libssh2.so.1.0.1 /usr/lib/$(gcc -dumpmachine)/ 2>/dev/null || true
+            ldconfig
+            cd ../..
+
+            # 下载并编译 libcurl
+            wget https://curl.se/download/curl-8.15.0.tar.gz
+            tar xzf curl-8.15.0.tar.gz
+            cd curl-8.15.0
+            mkdir build && cd build
+            ../configure --with-openssl --with-libssh2 --enable-versioned-symbols
+            make -j\$(nproc)
+            make install
+            cp /usr/local/lib/libcurl.so.4.8.0 /usr/lib/$(gcc -dumpmachine)/ 2>/dev/null || true
+            ldconfig
+            cd ../..
+
+            # 下载并编译 wxWidgets
+            wget https://github.com/wxWidgets/wxWidgets/releases/download/v3.3.1/wxWidgets-3.3.1.tar.bz2
+            tar xjf wxWidgets-3.3.1.tar.bz2
+            cd wxWidgets-3.3.1
+            mkdir gtk-build && cd gtk-build
+            ../configure --disable-shared
+            make -j\$(nproc)
+            make install
+            cd ../..
+
+            # 下载 FreeFileSync 源码
+            wget https://freefilesync.org/download/FreeFileSync_14.4_Source.zip
+            unzip FreeFileSync_14.4_Source.zip
+
+            # 应用代码修改
+            cd FreeFileSync/Source
+
+            # 4.1 sftp.cpp
+            sed -i '21i#define MAX_SFTP_OUTGOING_SIZE 30000\n#define MAX_SFTP_READ_SIZE 30000' afs/sftp.cpp
+
+            # 4.2 Makefile (GTK2 → GTK3)
+            sed -i 's/`pkg-config --cflags gtk+-2.0`/`pkg-config --cflags gtk+-3.0`/' Makefile
+            sed -i 's/-isystem\/usr\/include\/gtk-2.0/-isystem\/usr\/include\/gtk-3.0/' Makefile
+
+            # 4.3 application.cpp (#error → #warning)
+            sed -i '243s/#error/#warning/' application.cpp
+
+            # 4.4 darkmode.cpp
+            sed -i '63s/globalDefaultThemeIsDark = wxSystemSettings::GetAppearance().AreAppsDark();/globalDefaultThemeIsDark = false;/' ../wx+/darkmode.cpp
+            sed -i '96,99d' ../wx+/darkmode.cpp
+
+            # 4.5 darkmode.h
+            # 添加头文件包含
+            sed -i '12i#include <wx/settings.h>' ../wx+/darkmode.h
+            # 在29行后插入新内容（使用 heredoc 配合 sed）
+            sed -i '29r /dev/stdin' ../wx+/darkmode.h << 'EOF'
+            struct wxColorHook
+            {
+                virtual ~wxColorHook() {}
+                virtual wxColour getColor(wxSystemColour index) const = 0;
+            };
+            WXDLLIMPEXP_CORE inline std::unique_ptr<wxColorHook>& refGlobalColorHook()
+            {
+                static std::unique_ptr<wxColorHook> globalColorHook;
+                return globalColorHook;
+            }
+
+            class WXDLLIMPEXP_CORE wxSystemSettings2 : public wxSystemSettingsNative
+            {
+            public:
+                static wxColour GetColour(wxSystemColour index)
+                {
+                   if (refGlobalColorHook())
+                                    return refGlobalColorHook()->getColor(index);
+
+                   return wxSystemSettingsNative::GetColour(index);
+                }
+            };
+            EOF
+
+            # 4.6 gdrive.cpp (可选，留空)
+            # 如果需要，可在此填入自己的 client_id / secret
+
+            # 编译
+            make -j\$(nproc)
+
+            # 重命名二进制文件
+            cd ../../Build/Bin
+            BIN_NAME=\"FreeFileSync_\${{ github.event.inputs.arch }}\"
+            if [ -f FreeFileSync_aarch64 ]; then
+                mv FreeFileSync_aarch64 \$BIN_NAME
+            elif [ -f FreeFileSync_armhf ]; then
+                mv FreeFileSync_armhf \$BIN_NAME
+            elif [ -f FreeFileSync_i386 ]; then
+                mv FreeFileSync_i386 \$BIN_NAME
+            elif [ -f FreeFileSync_amd64 ]; then
+                mv FreeFileSync_amd64 \$BIN_NAME
+            else
+                echo \"Binary not found, using default name\"
+                mv FreeFileSync* \$BIN_NAME 2>/dev/null || true
+            fi
+            "
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FreeFileSync_${{ github.event.inputs.arch }}
+          path: ${{ github.workspace }}/FreeFileSync/Build/Bin/FreeFileSync_${{ github.event.inputs.arch }}
